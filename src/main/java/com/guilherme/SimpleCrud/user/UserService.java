@@ -1,6 +1,7 @@
 package com.guilherme.SimpleCrud.user;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,17 +16,16 @@ public class UserService {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     public UserResponseDTO createUser(UserCreateRequestDTO payload) throws Exception {
 
-        if(payload.name().isEmpty() || payload.name().isBlank()){
-            throw new Exception("Nome nao pode ser vazio");
-        }if(payload.email().isEmpty() || payload.email().isBlank()){
-            throw new Exception("Email nao pode ser vazio");
-        }if(payload.password().isEmpty() || payload.password().isBlank()){
-            throw new Exception("Senha nao pode ser vazia");
-        }
+        var encodedPass = this.passwordEncoder.encode(payload.password());
 
         var entity = this.userMapper.toEntity(payload);
+        
+        entity.setPassword(encodedPass);
         return this.userMapper.toUserResponseDTO(this.userRepository.save(entity));
     }
 
@@ -36,10 +36,18 @@ public class UserService {
 
     }
 
-    public List<User> findAll(){
+    public List<UserResponseDTO> findAll(){
 
-        var userList = this.userRepository.findAll().stream().map(user -> new User(user.getId(), user.getName(),
-                user.getEmail(), user.getPassword(), user.getCreatedAt(), user.getUpdatedAt())).toList();
+        var userList = this.userRepository.findAll().stream().map(user -> UserResponseDTO.builder()
+                        .id(user.getId())
+                        .name(user.getName())
+                        .email(user.getEmail())
+                        .password(user.getPassword())
+                        .createdAt(user.getCreatedAt())
+                        .updatedAt(user.getUpdatedAt())
+                        .build()
+                )
+                .toList();
         return userList;
     }
 
